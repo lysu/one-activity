@@ -32,4 +32,7 @@ type StorageConfig struct {
 		Partitions, Replicas int
 		ReturnDuration       time.Duration
 	}
+	RMDB struct {
+		DBDialect, DBUrl string
+	}
 }
