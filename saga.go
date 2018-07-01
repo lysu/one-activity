@@ -156,7 +156,7 @@ func (s *Saga) compensate(tlog Log) error {
 	subDef := s.sec.MustFindSubTxDef(tlog.SubTxID)
 	result := subDef.compensate.Call(params)
 	if isReturnError(result) {
-		s.Abort()
+		panic("Compensate Failure")
 	}
 
 	clog = &Log{
