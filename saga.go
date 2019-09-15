@@ -11,10 +11,11 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/lysu/go-saga/storage"
-	"golang.org/x/net/context"
 	"log"
 	"os"
+
+	"github.com/lysu/go-saga/storage"
+	"golang.org/x/net/context"
 )
 
 const LogPrefix = "saga_"
@@ -38,10 +39,11 @@ func SetLogger(l *log.Logger) {
 // Saga presents current execute transaction.
 // A Saga constituted by small sub-transactions.
 type Saga struct {
-	id      uint64
-	logID   string
-	context context.Context
-	sec     *ExecutionCoordinator
+	id          uint64
+	logID       string
+	context     context.Context
+	sec         *ExecutionCoordinator
+	abortStatus bool
 }
 
 func (s *Saga) startSaga() {
@@ -58,6 +60,10 @@ func (s *Saga) startSaga() {
 // ExecSub executes a sub-transaction for given subTxID(which define in SEC initialize) and arguments.
 // it returns current Saga.
 func (s *Saga) ExecSub(subTxID string, args ...interface{}) *Saga {
+	if s.abortStatus {
+		return s
+	}
+
 	subTxDef := s.sec.MustFindSubTxDef(subTxID)
 	log := &Log{
 		Type:    ActionStart,
@@ -125,6 +131,8 @@ func (s *Saga) Abort() {
 	if err != nil {
 		panic("Add log Failure")
 	}
+
+	s.abortStatus = true
 	for i := len(logs) - 1; i >= 0; i-- {
 		logData := logs[i]
 		log := mustUnmarshalLog(logData)
