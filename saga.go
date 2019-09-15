@@ -60,7 +60,7 @@ func (s *Saga) startSaga() {
 // ExecSub executes a sub-transaction for given subTxID(which define in SEC initialize) and arguments.
 // it returns current Saga.
 func (s *Saga) ExecSub(subTxID string, args ...interface{}) *Saga {
-	if s.abortStatus {
+	if s.IsAborted() {
 		return s
 	}
 
@@ -100,7 +100,7 @@ func (s *Saga) ExecSub(subTxID string, args ...interface{}) *Saga {
 }
 
 // EndSaga finishes a Saga's execution.
-func (s *Saga) EndSaga() {
+func (s *Saga) EndSaga() *Saga {
 	log := &Log{
 		Type: SagaEnd,
 		Time: time.Now(),
@@ -113,6 +113,13 @@ func (s *Saga) EndSaga() {
 	if err != nil {
 		panic("Clean up topic failure")
 	}
+
+	return s
+}
+
+// IsAborted return status if saga is aborted or not
+func (s *Saga) IsAborted() bool {
+	return s.abortStatus
 }
 
 // Abort stop and compensate to rollback to start situation.
