@@ -11,10 +11,11 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/lysu/go-saga/storage"
-	"golang.org/x/net/context"
 	"log"
 	"os"
+
+	"github.com/lysu/go-saga/storage"
+	"golang.org/x/net/context"
 )
 
 const LogPrefix = "saga_"
@@ -38,10 +39,11 @@ func SetLogger(l *log.Logger) {
 // Saga presents current execute transaction.
 // A Saga constituted by small sub-transactions.
 type Saga struct {
-	id      uint64
-	logID   string
-	context context.Context
-	sec     *ExecutionCoordinator
+	id          uint64
+	logID       string
+	context     context.Context
+	sec         *ExecutionCoordinator
+	abortStatus bool
 }
 
 func (s *Saga) startSaga() {
@@ -58,6 +60,10 @@ func (s *Saga) startSaga() {
 // ExecSub executes a sub-transaction for given subTxID(which define in SEC initialize) and arguments.
 // it returns current Saga.
 func (s *Saga) ExecSub(subTxID string, args ...interface{}) *Saga {
+	if s.IsAborted() {
+		return s
+	}
+
 	subTxDef := s.sec.MustFindSubTxDef(subTxID)
 	log := &Log{
 		Type:    ActionStart,
@@ -94,7 +100,7 @@ func (s *Saga) ExecSub(subTxID string, args ...interface{}) *Saga {
 }
 
 // EndSaga finishes a Saga's execution.
-func (s *Saga) EndSaga() {
+func (s *Saga) EndSaga() *Saga {
 	log := &Log{
 		Type: SagaEnd,
 		Time: time.Now(),
@@ -107,6 +113,13 @@ func (s *Saga) EndSaga() {
 	if err != nil {
 		panic("Clean up topic failure")
 	}
+
+	return s
+}
+
+// IsAborted return status if saga is aborted or not
+func (s *Saga) IsAborted() bool {
+	return s.abortStatus
 }
 
 // Abort stop and compensate to rollback to start situation.
@@ -125,6 +138,8 @@ func (s *Saga) Abort() {
 	if err != nil {
 		panic("Add log Failure")
 	}
+
+	s.abortStatus = true
 	for i := len(logs) - 1; i >= 0; i-- {
 		logData := logs[i]
 		log := mustUnmarshalLog(logData)
